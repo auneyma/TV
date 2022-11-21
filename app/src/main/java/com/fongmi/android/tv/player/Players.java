@@ -52,16 +52,13 @@ public class Players implements Player.Listener, ParseTask.Callback {
         return exoPlayer;
     }
 
-    private void setErrorCode(int errorCode) {
-        this.errorCode = errorCode;
+    public void reset() {
+        this.errorCode = 0;
+        this.retry = 0;
     }
 
     public int getRetry() {
         return retry;
-    }
-
-    public void setRetry(int retry) {
-        this.retry = retry;
     }
 
     public int addRetry() {
@@ -80,8 +77,9 @@ public class Players implements Player.Listener, ParseTask.Callback {
         exoPlayer.setPlaybackSpeed(speed);
     }
 
-    public void resetSpeed() {
-        exoPlayer.setPlaybackSpeed(1f);
+    public void toggleSpeed() {
+        float speed = exoPlayer.getPlaybackParameters().speed;
+        exoPlayer.setPlaybackSpeed(speed == 1 ? 3f : 1f);
     }
 
     public String getTime(long time) {
@@ -104,11 +102,11 @@ public class Players implements Player.Listener, ParseTask.Callback {
     }
 
     public void seekTo(int time) {
-        exoPlayer.seekTo(getCurrentPosition() + time);
+        if (time != 0) exoPlayer.seekTo(getCurrentPosition() + time);
     }
 
     public void seekTo(long time) {
-        exoPlayer.seekTo(time);
+        if (time != 0) exoPlayer.seekTo(time);
     }
 
     public boolean isPlaying() {
@@ -117,6 +115,10 @@ public class Players implements Player.Listener, ParseTask.Callback {
 
     public boolean isIdle() {
         return exoPlayer != null && exoPlayer.getPlaybackState() == Player.STATE_IDLE;
+    }
+
+    public boolean isVod() {
+        return getDuration() > 5 * 60 * 1000;
     }
 
     public boolean canNext() {
@@ -132,7 +134,7 @@ public class Players implements Player.Listener, ParseTask.Callback {
     }
 
     public void stop() {
-        setRetry(0);
+        reset();
         exoPlayer.stop();
         exoPlayer.clearMediaItems();
     }
@@ -169,14 +171,12 @@ public class Players implements Player.Listener, ParseTask.Callback {
         exoPlayer.setMediaSource(ExoUtil.getSource(result, errorCode));
         PlayerEvent.state(0);
         exoPlayer.prepare();
-        setErrorCode(0);
     }
 
     private void setMediaSource(Map<String, String> headers, String url) {
         exoPlayer.setMediaSource(ExoUtil.getSource(headers, url, errorCode));
         PlayerEvent.state(0);
         exoPlayer.prepare();
-        setErrorCode(0);
     }
 
     @Override
@@ -192,7 +192,7 @@ public class Players implements Player.Listener, ParseTask.Callback {
 
     @Override
     public void onPlayerError(@NonNull PlaybackException error) {
-        setErrorCode(error.errorCode);
+        this.errorCode = error.errorCode;
         PlayerEvent.error(R.string.error_play_format, true);
     }
 

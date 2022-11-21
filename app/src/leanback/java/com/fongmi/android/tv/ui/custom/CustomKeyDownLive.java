@@ -1,16 +1,16 @@
 package com.fongmi.android.tv.ui.custom;
 
-import android.os.Handler;
 import android.view.KeyEvent;
 
+import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.utils.Utils;
 
 public class CustomKeyDownLive {
 
     private final Listener listener;
     private final StringBuilder text;
-    private final Handler handler;
     private boolean press;
+    private int holdTime;
 
     private final Runnable runnable = new Runnable() {
         @Override
@@ -26,27 +26,29 @@ public class CustomKeyDownLive {
 
     private CustomKeyDownLive(Listener listener) {
         this.listener = listener;
-        this.handler = new Handler();
         this.text = new StringBuilder();
     }
 
     public void onKeyDown(int keyCode) {
         if (text.length() >= 4) return;
         text.append(getNumber(keyCode));
-        handler.removeCallbacks(runnable);
-        handler.postDelayed(runnable, 1000);
         listener.onShow(text.toString());
+        App.post(runnable, 1000);
     }
 
     public boolean onKeyDown(KeyEvent event) {
-        if (event.getAction() == KeyEvent.ACTION_DOWN && Utils.isUpKey(event)) {
+        if (event.getAction() == KeyEvent.ACTION_DOWN && Utils.isLeftKey(event)) {
+            listener.onSeeking(subTime());
+        } else if (event.getAction() == KeyEvent.ACTION_DOWN && Utils.isRightKey(event)) {
+            listener.onSeeking(addTime());
+        } else if (event.getAction() == KeyEvent.ACTION_DOWN && Utils.isUpKey(event)) {
             listener.onKeyUp();
         } else if (event.getAction() == KeyEvent.ACTION_DOWN && Utils.isDownKey(event)) {
             listener.onKeyDown();
         } else if (event.getAction() == KeyEvent.ACTION_UP && Utils.isLeftKey(event)) {
-            listener.onKeyLeft();
+            listener.onKeyLeft(holdTime);
         } else if (event.getAction() == KeyEvent.ACTION_UP && Utils.isRightKey(event)) {
-            listener.onKeyRight();
+            listener.onKeyRight(holdTime);
         } else if (event.getAction() == KeyEvent.ACTION_UP && Utils.isDigitKey(event)) {
             onKeyDown(event.getKeyCode());
         } else if (Utils.isEnterKey(event)) {
@@ -73,22 +75,36 @@ public class CustomKeyDownLive {
         return keyCode >= 144 ? keyCode - 144 : keyCode - 7;
     }
 
+    private int addTime() {
+        return holdTime = holdTime + 10000;
+    }
+
+    private int subTime() {
+        return holdTime = holdTime - 10000;
+    }
+
+    public void resetTime() {
+        holdTime = 0;
+    }
+
     public interface Listener {
 
         void onShow(String number);
 
         void onFind(String number);
 
+        void onSeeking(int time);
+
         void onKeyUp();
 
         void onKeyDown();
 
-        void onKeyLeft();
+        void onKeyLeft(int time);
 
-        void onKeyRight();
+        void onKeyRight(int time);
 
         void onKeyCenter();
 
-        void onLongPress();
+        boolean onLongPress();
     }
 }
